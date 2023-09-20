@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <script href="index.js"></script>
+            <link rel="stylesheet" type="text/css" href="styles.css">
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300&display=swap" rel="stylesheet">
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <title>Mi Economia</title>
+        </head>
+        <body>
+            
+            <div class="div-bienvenida">
+                <h1>Gestiona tu economia</h1>
+                <p>Esta aplicacion esta diseñada para que puedas ver y anotar el seguimiento de tus gastos. </p>
+            </div>
+                       
+            <form class="formulario-gastos" id="transactionForm">
+              <div class="contenedor-formulario">
+                <div class="div-formulario">
+                  <h5>Tipo de transaccion</h5>
+                  <input id="ingreso" type="radio" name="transactionSelector">
+                    <label for="Ingreso"><h5>Ingreso</h5></label>
+                    <input id="egreso" type="radio" name="transactionSelector">
+                    <label for="Egreso"><h5>Egreso</h5></label>
+                </div>
+                
+                <div class="div-formulario">
+                    <label for="transactionDescription"><h5>Descripcion</h5></label>
+                    <input id="transactionDescription" name="transactionDescription" class="input" placeholder="Descripcion" autocomplete="off">
+                </div>
+
+                <div class="div-formulario">
+                  <label for="transactionAmount"><h5>Monto</h5></label>
+                    <input id="transactionAmount" type="number" name="transactionAmount" class="input" placeholder="Monto">
+                </div>
+                <div class="div-formulario">
+                    <label for="transactionCategory"><h5>Categoria</h5></label>
+                    <input id="transactionCategory" name="transactionCategory"  class="input" placeholder="Categoria" autocomplete="off">
+                </div>
+
+                <button id="bo">
+                  <span class="shadow"></span>
+                  <span class="edge"></span>
+                  <span class="front text"> Añadir</span>
+                </button>
+          </div>
+            </form>
+          
+                
+            <div class="div-tabla">
+                <table class="tabla-gastos" >
+                  <tr class="tabla-gastos-cabecera">
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Categoría</th>
+                    <th>Acciones</th> <!-- Agregamos la columna de acciones -->
+                  </tr>
+                  <tr class="tabla-gastos-info">
+                  </tr>
+                </table>
+                
+                <div class="div-chart">
+                  <canvas id="chart" ></canvas>
+
+                </div>
+            </div>
+
+<script>
+  
+// Código JavaScript mejorado con correcciones
+
+var gastos = []; // Inicializar el arreglo de gastos vacío
+var categorias = []; // Inicializar el arreglo de categorías vacío
+var myChart; // Variable para almacenar la instancia del gráfico
+
+// Función para actualizar el gráfico
+function actualizarGrafico() {
+  // Obtener las categorías y los montos de los gastos
+  categorias = [];
+  var montos = [];
+  gastos.forEach(function(gasto) {
+    var categoriaIndex = categorias.indexOf(gasto.categoria);
+    if (categoriaIndex === -1) {
+      categorias.push(gasto.categoria);
+      montos.push(gasto.monto);
+    } else {
+      montos[categoriaIndex] += gasto.monto; // Sumar el monto existente al nuevo monto
+    }
+  });
+
+  // Si el gráfico ya existe, destruirlo antes de crear uno nuevo
+  if (myChart) {
+    myChart.destroy();
+  }
+
+  // Crear el gráfico utilizando Chart.js con tipo "doughnut"
+  var ctx = document.getElementById('chart').getContext('2d');
+  myChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: categorias,
+      datasets: [{
+        data: montos,
+        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+        hoverBackgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40']
+      }]
+    },
+    options: {
+      cutoutPercentage: 50, // Porcentaje de corte para crear el centro vacío
+      plugins: {
+        legend: {
+          labels: {
+            color: 'white' // Cambia el color de las etiquetas a blanco
+          }
+        }
+      }
+    }
+  });
+}
+
+// Obtener el formulario y la tabla
+const transactionForm = document.getElementById('transactionForm');
+const tablaGastos = document.querySelector('.tabla-gastos');
+
+// Variable para almacenar la fila actualmente en edición
+let filaEnEdicion = null;
+
+// Escuchar el evento de envío del formulario
+transactionForm.addEventListener('submit', function(event) {
+  event.preventDefault(); // Evitar que se recargue la página
+
+  // Obtener los valores ingresados por el usuario
+  const tipoTransaccion = document.querySelector('input[name="transactionSelector"]:checked');
+  const descripcion = document.getElementById('transactionDescription').value;
+  const monto = parseFloat(document.getElementById('transactionAmount').value);
+  const categoria = document.getElementById('transactionCategory').value;
+
+  // Validar que todos los campos estén completos
+  if (!tipoTransaccion || !descripcion || isNaN(monto) || !categoria) {
+    alert('Por favor, complete todos los campos del formulario.');
+    return;
+  }
+
+  if (filaEnEdicion) {
+    // Actualizar la fila en edición con los nuevos valores
+    const celdas = filaEnEdicion.querySelectorAll('td');
+    celdas[0].textContent = tipoTransaccion.id;
+    celdas[1].textContent = descripcion;
+    celdas[2].textContent = monto;
+    celdas[3].textContent = categoria;
+
+    // Obtener la descripción del gasto a editar
+    const descripcionEditar = celdas[1].textContent;
+
+    // Actualizar el valor correspondiente del arreglo de gastos
+    const index = gastos.findIndex(gasto => gasto.descripcion === descripcionEditar);
+    if (index !== -1) {
+      gastos[index].tipo = tipoTransaccion.id;
+      gastos[index].descripcion = descripcion;
+      gastos[index].monto = monto;
+      gastos[index].categoria = categoria;
+    }
+  } else {
+    // Crear una nueva fila en la tabla
+    const newRow = document.createElement('tr');
+
+    // Insertar celdas en la nueva fila
+    const tipoCell = document.createElement('td');
+    const descripcionCell = document.createElement('td');
+    const montoCell = document.createElement('td');
+    const categoriaCell = document.createElement('td');
+    const accionesCell = document.createElement('td');
+
+    // Establecer el contenido de las celdas
+    tipoCell.textContent = tipoTransaccion.id;
+    descripcionCell.textContent = descripcion;
+    montoCell.textContent = monto;
+    categoriaCell.textContent = categoria;
+    accionesCell.innerHTML = '<button class="editar">Editar</button> <button class="eliminar">Eliminar</button>';
+
+    // Agregar eventos a los botones de editar y eliminar
+    const botonEditar = accionesCell.querySelector('.editar');
+    botonEditar.addEventListener('click', function() {
+      editarFila(newRow);
+    });
+
+    const botonEliminar = accionesCell.querySelector('.eliminar');
+    botonEliminar.addEventListener('click', function() {
+      eliminarFila(newRow);
+    });
+
+    // Agregar las celdas a la fila
+    newRow.appendChild(tipoCell);
+    newRow.appendChild(descripcionCell);
+    newRow.appendChild(montoCell);
+    newRow.appendChild(categoriaCell);
+    newRow.appendChild(accionesCell);
+
+    // Agregar la nueva fila a la tabla
+    tablaGastos.appendChild(newRow);
+
+    // Crear un objeto de gasto con los valores ingresados
+    var nuevoGasto = {
+      tipo: tipoTransaccion.id,
+      descripcion: descripcion,
+      monto: monto,
+      categoria: categoria
+    };
+
+    // Agregar el nuevo gasto al arreglo de gastos
+    gastos.push(nuevoGasto);
+  }
+
+  // Actualizar el gráfico
+  actualizarGrafico();
+
+  // Limpiar los campos del formulario
+  document.querySelector('input[name="transactionSelector"]:checked').checked = false;
+  document.getElementById('transactionDescription').value = '';
+  document.getElementById('transactionAmount').value = '';
+  document.getElementById('transactionCategory').value = '';
+});
+
+// Función para eliminar una fila de la tabla y actualizar los gastos
+function eliminarFila(fila) {
+  // Aquí puedes implementar la lógica para eliminar la transacción
+  // Puedes acceder a los datos de la fila y eliminarla de la tabla.
+  tablaGastos.removeChild(fila);
+
+  // Obtener la descripción del gasto a eliminar
+  const descripcionEliminar = fila.querySelector('td:nth-child(2)').textContent;
+
+  // Eliminar el valor correspondiente del arreglo de gastos
+  const index = gastos.findIndex(gasto => gasto.descripcion === descripcionEliminar);
+  if (index !== -1) {
+    const categoriaEliminada = gastos[index].categoria;
+    gastos.splice(index, 1);
+
+    // Actualizar el gráfico
+    actualizarGrafico();
+
+    // Verificar si no hay más gastos asociados a la categoría eliminada
+    const gastosCategoriaEliminada = gastos.some(gasto => gasto.categoria === categoriaEliminada);
+    if (!gastosCategoriaEliminada) {
+      const categoriaIndex = categorias.indexOf(categoriaEliminada);
+      if (categoriaIndex !== -1) {
+        categorias.splice(categoriaIndex, 1);
+        // Actualizar el gráfico nuevamente
+        actualizarGrafico();
+      }
+    }
+  }
+
+  // Reiniciar la fila en edición si se eliminó
+  if (fila === filaEnEdicion) {
+    filaEnEdicion = null;
+    // Limpiar los campos del formulario
+    document.querySelector('input[name="transactionSelector"]:checked').checked = false;
+    document.getElementById('transactionDescription').value = '';
+    document.getElementById('transactionAmount').value = '';
+    document.getElementById('transactionCategory').value = '';
+  }
+}
+
+// Resto del código...
+
+// Función para editar una fila de la tabla
+function editarFila(fila) {
+  // Al hacer clic en el botón de editar, se almacena la fila en edición
+  filaEnEdicion = fila;
+
+  // Obtener los valores de la fila en edición
+  const celdas = filaEnEdicion.querySelectorAll('td');
+  const tipoTransaccionActual = celdas[0].textContent;
+  const descripcionActual = celdas[1].textContent;
+  const montoActual = parseFloat(celdas[2].textContent);
+  const categoriaActual = celdas[3].textContent;
+
+  // Llenar los campos del formulario con los valores actuales
+  document.querySelector(`input[name="transactionSelector"][id="${tipoTransaccionActual}"]`).checked = true;
+  document.getElementById('transactionDescription').value = descripcionActual;
+  document.getElementById('transactionAmount').value = montoActual;
+  document.getElementById('transactionCategory').value = categoriaActual;
+
+  // Actualizar categorías solo si la categoría actual no está en el arreglo
+  if (!categorias.includes(categoriaActual)) {
+    categorias.push(categoriaActual);
+  }
+}
+
+                </script>     
+
+        </body>
+    </html>
